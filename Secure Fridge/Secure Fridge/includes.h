@@ -1,0 +1,9 @@
+#include <iostream>
+#include <map>
+#include <vector>
+#include <string>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#include "core.h"
+#include "core.cpp"
