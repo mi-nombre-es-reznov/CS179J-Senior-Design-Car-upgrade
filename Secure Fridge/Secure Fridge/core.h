@@ -9,7 +9,6 @@ public:
 	Core();
 
 	void Start();
-	void AddUser();
 	void Login();
 	void Menu();
 	bool FingerPrintFunction();
@@ -17,10 +16,22 @@ public:
 	double GetWeight();
 	void ToggleLock();
 
+	void AddBarcode();
+	void RemoveBarcode();
+
+	void AddUser();
+	void RemoveUser();
+
+	void LoadBarcodes();
+	void LoadUsers();
+
 	void Transaction(string itemName);
 	bool isMatch(string input, string pass);
 
+	void CLS();
+
 	bool isRunning;
+	string Finish, Done;
 	map<string,string> Items;
 	vector<string> UIDs;
 	vector<string> UIDPs;
