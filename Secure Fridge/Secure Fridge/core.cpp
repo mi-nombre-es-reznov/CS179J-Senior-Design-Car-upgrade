@@ -3,6 +3,7 @@ Core::Core()
 {
 	/// 2019 179 9 (0-9) // 9:lock, 0:finish
 	isRunning = true;
+	GPIOSetup();
 	LoadBarcodes();
 	LoadUsers();
 }
@@ -14,6 +15,10 @@ void Core::Start()
 		Menu();
 	}
 }
+void Core::GPIOSetup()
+{
+	pinMode(0,OUTPUT);
+}
 void Core::Menu()
 {
 	char input = 0;
@@ -24,9 +29,13 @@ void Core::Menu()
 	cout << "3) Add/Remove Item" << endl;
 	cout << "4) Add Barcode" << endl;
 	cout << "5) Remove Barcode" << endl;
+	cout << "6) Test I/O Menu" << endl;
 	cout << "Choice: ";
 	cin >> input;
 	switch(input) {
+		case '9':
+			ViewBarcodes();
+			break;
 		case '0':
 			isRunning = false;
 			break;
@@ -44,6 +53,9 @@ void Core::Menu()
 			break;
 		case '5':
 			RemoveBarcode();
+			break;
+		case '6':
+			TestIOMenu();
 			break;
 		default:
 			break;
@@ -103,9 +115,13 @@ double Core::GetWeight()
 {
 	return 1.0; // WIP
 }
-void Core::ToggleLock()
+void Core::OpenLock()
 {
-	// WIP
+	digitalWrite(0, HIGH);
+}
+void Core::CloseLock()
+{
+	digitalWrite(0, LOW);
 }
 void Core::AddBarcode()
 {
@@ -283,4 +299,43 @@ bool Core::isMatch(string input, string pass)
 void Core::CLS()
 {
 	cout << "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n";
+}
+void Core::ViewBarcodes()
+{
+	CLS();
+	string placeholder;
+	int size = UIDs.size();
+	for(map<string,string>::iterator it = Items.begin(); it != Items.end(); it++)
+	{
+		cout << it->first << "\t" << it->second << endl;
+	}
+	cout << "Press c to continue: ";
+	cin >> placeholder;
+}
+void Core::TestIOMenu()
+{
+	while(true)
+	{
+		char input = 0;
+		CLS();
+		cout << "Welcome to the I/O Testing Menu" << endl;
+		cout << "0) Exit" << endl;
+		cout << "1) Test Solenoid Open" << endl;
+		cout << "2) Test Solenoid Close" << endl;
+		cout << "Choice: ";
+		cin >> input;
+		switch(input) {
+			case '0':
+				return;
+				break;
+			case '1':
+				OpenLock();
+				break;
+			case '2':
+				CloseLock();
+				break;
+			default:
+				break;
+		}
+	}
 }

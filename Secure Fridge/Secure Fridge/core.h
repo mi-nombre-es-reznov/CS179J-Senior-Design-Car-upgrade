@@ -9,12 +9,15 @@ public:
 	Core();
 
 	void Start();
+	void GPIOSetup();
 	void Login();
 	void Menu();
 	bool FingerPrintFunction();
 	void BarcodeFunction();
 	double GetWeight();
-	void ToggleLock();
+
+	void OpenLock();
+	void CloseLock();
 
 	void AddBarcode();
 	void RemoveBarcode();
@@ -29,6 +32,8 @@ public:
 	bool isMatch(string input, string pass);
 
 	void CLS();
+	void ViewBarcodes();
+	void TestIOMenu();
 
 	bool isRunning;
 	string Finish, Done;
