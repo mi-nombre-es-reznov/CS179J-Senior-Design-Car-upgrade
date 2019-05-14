@@ -1,4 +1,4 @@
-/*************************************************** 
+  /*************************************************** 
   This is an example sketch for our optical Fingerprint sensor
 
   Designed specifically to work with the Adafruit BMP085 Breakout 
@@ -16,6 +16,8 @@
 
 
 #include <Adafruit_Fingerprint.h>
+#include <SoftwareSerial.h>
+int r = 0;
 
 // On Leonardo/Micro or others with hardware serial, use those! #0 is green wire, #1 is white
 // uncomment this line:
@@ -31,6 +33,10 @@ Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
 void setup()  
 {
+  // Initializing same pins as output signal LEDs. Nicholas - 6 May 2019
+  pinMode(2,OUTPUT);
+  pinMode(4,OUTPUT);
+  
   Serial.begin(9600);
   while (!Serial);  // For Yun/Leo/Micro/Zero/...
   delay(100);
@@ -41,8 +47,39 @@ void setup()
   
   if (finger.verifyPassword()) {
     Serial.println("Found fingerprint sensor!");
+
+    // Blinks on and off 3 times w/a 50ms wait time. (GREEN LED)
+    // Nicholas - 6 May 2019
+    digitalWrite(2, HIGH);  // On #1
+    delay(50);  // wait
+    digitalWrite(2,LOW); // Off #1
+    delay(50);  // wait
+    digitalWrite(2, HIGH);  // On #2
+    delay(50);  // wait
+    digitalWrite(2,LOW);  // Off #2
+    delay(50);  // wait
+    digitalWrite(2, HIGH);  // On #3
+    delay(50);  // wait
+    digitalWrite(2,LOW);  // Off #3
+    delay(50);  // wait
   } else {
     Serial.println("Did not find fingerprint sensor :(");
+
+    // Blinks on and off 3 times w/a 50ms wait time. (RED LED)
+    // Nicholas - 6 May 2019
+    digitalWrite(4, HIGH);  // On #1
+    delay(50);  // wait
+    digitalWrite(4,LOW); // Off #1
+    delay(50);  // wait
+    digitalWrite(4, HIGH);  // On #2
+    delay(50);  // wait
+    digitalWrite(4,LOW);  // Off #2
+    delay(50);  // wait
+    digitalWrite(4, HIGH);  // On #3
+    delay(50);  // wait
+    digitalWrite(4,LOW);  // Off #3
+    delay(50);  // wait
+    
     while (1) { delay(1); }
   }
 
@@ -52,19 +89,20 @@ void setup()
 }
 
 void loop()                     // run over and over again
-{
-  getFingerprintIDez();
-  delay(50);            //don't ned to run this at full speed.
+{  
+  getFingerprintID();
+  recieve_input();
+  delay(100);            //don't ned to run this at full speed.
 }
 
-uint8_t getFingerprintID() {
+uint8_t getFingerprintID() { 
   uint8_t p = finger.getImage();
   switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image taken");
+      //Serial.println("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.println("No finger detected");
+      //Serial.println("No finger detected");
       return p;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
@@ -82,7 +120,7 @@ uint8_t getFingerprintID() {
   p = finger.image2Tz();
   switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image converted");
+      //Serial.println("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
       Serial.println("Image too messy");
@@ -104,12 +142,21 @@ uint8_t getFingerprintID() {
   // OK converted!
   p = finger.fingerFastSearch();
   if (p == FINGERPRINT_OK) {
-    Serial.println("Found a print match!");
+    //Serial.println("Found a print match!");
+
+    digitalWrite(2,HIGH);
+    delay(2000);
+    digitalWrite(2,LOW);
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
     return p;
-  } else if (p == FINGERPRINT_NOTFOUND) {
-    Serial.println("Did not find a match");
+  } else if (p == FINGERPRINT_NOTFOUND) {    
+    //Serial.println("Did not find a match");
+    //Serial.println("0");
+
+    digitalWrite(4,HIGH);
+    delay(2000);
+    digitalWrite(4,LOW);
     return p;
   } else {
     Serial.println("Unknown error");
@@ -117,8 +164,9 @@ uint8_t getFingerprintID() {
   }   
   
   // found a match!
-  Serial.print("Found ID #"); Serial.print(finger.fingerID); 
-  Serial.print(" with confidence of "); Serial.println(finger.confidence); 
+  Serial.println("1");
+  //Serial.print("Found ID #"); Serial.print(finger.fingerID); 
+  //Serial.print(" with confidence of "); Serial.println(finger.confidence); 
 
   return finger.fingerID;
 }
@@ -134,8 +182,64 @@ int getFingerprintIDez() {
   p = finger.fingerFastSearch();
   if (p != FINGERPRINT_OK)  return -1;
   
-  // found a match!
-  Serial.print("Found ID #"); Serial.print(finger.fingerID); 
-  Serial.print(" with confidence of "); Serial.println(finger.confidence);
+  // found a match!  
+  //Serial.print("Found ID #"); Serial.print(finger.fingerID); 
+  //Serial.print(" with confidence of "); Serial.println(finger.confidence);
   return finger.fingerID; 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Try and get write-back from Raspberry Pi
+void recieve_input()
+{
+    if(Serial.available()){         //From RPi to Arduino
+    r = (Serial.read() - '0');  //conveting the value of chars to integer
+    Serial.println(r);
+  }
+
+  if(r == 3)
+  {
+    digitalWrite(4, HIGH);
+    digitalWrite(2, HIGH);
+    delay(500);
+    digitalWrite(4, LOW);
+    digitalWrite(2, LOW);
+    delay(1000);
+    digitalWrite(4, HIGH);
+    digitalWrite(2, HIGH);
+    delay(500);
+    digitalWrite(4, LOW);
+    digitalWrite(2, LOW);
+    delay(1000);
+    digitalWrite(4, HIGH);
+    digitalWrite(2, HIGH);
+    delay(500);
+    digitalWrite(4, LOW);
+    digitalWrite(2, LOW);
+    delay(1000);
+
+    r = 0;
+  }
 }
