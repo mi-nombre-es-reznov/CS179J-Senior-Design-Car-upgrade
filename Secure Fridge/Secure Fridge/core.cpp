@@ -123,6 +123,13 @@ void Core::CloseLock()
 {
 	digitalWrite(0, LOW);
 }
+void Core::ReadLoadCell()
+{
+	string input="";
+	while(input!="q"){
+		cout << digitalRead(1);
+	}
+}
 void Core::AddBarcode()
 {
 	string barcode, name;
@@ -333,6 +340,9 @@ void Core::TestIOMenu()
 				break;
 			case '2':
 				CloseLock();
+				break;
+			case '3':
+				ReadLoadCell();
 				break;
 			default:
 				break;

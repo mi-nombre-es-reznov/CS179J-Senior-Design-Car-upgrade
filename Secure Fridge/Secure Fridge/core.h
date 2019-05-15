@@ -18,6 +18,7 @@ public:
 
 	void OpenLock();
 	void CloseLock();
+	void ReadLoadCell();
 
 	void AddBarcode();
 	void RemoveBarcode();

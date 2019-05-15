@@ -10,6 +10,9 @@ hx.set_reference_unit(-422.5)
 hx.reset()
 hx.tare()
 
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(27,GPIO.OUT)
+
 
 userFingerPrint = []
 userPassword = []
@@ -21,6 +24,7 @@ Done = ""
 
 def menu():
     CLS()
+    closeSolenoid()
     print ("Welcome to the secure fridge ")
     print ("1) Add User ")
     print ("2) Remove User ")
@@ -48,39 +52,49 @@ def menu():
         removeBarcode()
     elif userInput == "6":
         testIOMenu()
-    elif userInput == "7":
-        GetWeight()
+    elif userInput == "8":
+        return False
     else:
         print("Wrong choice")
-        menu()
+    return True
+
+def openSolenoid():
+    GPIO.output(27,0)
+
+
+def closeSolenoid():
+    GPIO.output(27,1)
 
 def viewBarcodes():
     CLS()
     print ("In view barcodes")
 
 def addUser():
-    fingerPrintFunction()
-    fout = open("Users.txt", 'a')
-    print("Add new fingerprint: ")
-    newFingerprint = input()
-    userFingerPrint.append(newFingerprint)
-    print("Add new password: ")
-    newPass = input()
-    userPassword.append(newPass)
-    userData = newFingerprint + "\t" + newPass + "\n"
-    fout.write(userData)
-    fout.close()
-    menu()
+    CLS()
+    if(fingerPrintFunction()):
+        fout = open("Users.txt", 'a')
+        CLS()
+        print("Add new fingerprint: ")
+        newFingerprint = input()
+        userFingerPrint.append(newFingerprint)
+        print("Add new password: ")
+        newPass = input()
+        userPassword.append(newPass)
+        userData = newFingerprint + "\t" + newPass + "\n"
+        fout.write(userData)
+        fout.close()
 
 def removeUser():
     print("Removing user")
 
 def Login():
     if fingerPrintFunction():
+        openSolenoid()
         barCodeFunction()
 
 
 def addBarcode():
+    CLS()
     fout = open("ItemBarcodes.txt", 'a')
     print("Add new barcode: ")
     newBarcodeItem = input()
@@ -91,15 +105,15 @@ def addBarcode():
     userData = newBarcodeItem + "\t" + newItemName + "\n"
     fout.write(userData)
     fout.close()
-    menu()
 
 
 def removeBarcode():
+    CLS()
     DDD = {name: (upc) for name, upc in ItemPairs}
     print("Enter barcode: (-1 to exit)")
     userRemoveBarcode = input()
     if userRemoveBarcode == "-1":
-        menu()
+        return
     try:
         barcodeName = DDD[userRemoveBarcode]
         itemToRemove = userRemoveBarcode + "\t" + barcodeName
@@ -110,7 +124,7 @@ def removeBarcode():
                 if line.strip("\n") != itemToRemove:
                     f.write(line)
         print("Item removed")
-        menu()
+        return
     except KeyError:
         print("Barcode does not exist")
         removeBarcode()
@@ -126,9 +140,9 @@ def testIOMenu():
 
 
 def fingerPrintFunction():
-
     userFingerPrint = ""
     while userFingerPrint != "-1":
+        CLS()
         print("Enter fingerprint (-1 to exit)")
         userFingerPrint = input()
         if (userFingerPrint == "999" or userFingerPrint == "-1"):
@@ -157,6 +171,7 @@ def programExit():
     exit()
 
 def barCodeFunction():
+    CLS()
     D = {upc: (name) for upc, name in ItemPairs}
     DD = {name: (upc) for name, upc in ItemPairs}
     userBarcodeinput = "entry"
@@ -166,7 +181,7 @@ def barCodeFunction():
         userBarcodeinput = input()
         userBarcodeinput = str(userBarcodeinput)
         if userBarcodeinput == doneCode:
-            menu()
+            return
         try:
             foundItem = D[userBarcodeinput]
             print("Desposit/Withdrawl your " + foundItem)
@@ -177,7 +192,7 @@ def barCodeFunction():
             print("Press 'c' to continue")
             userBarcodeinput = input()
 
-    menu()
+    return
 
 
 def LoadUser():
@@ -255,4 +270,6 @@ def CLS():
 if __name__ == '__main__':
     LoadUser()
     LoadBarcodes()
-    menu()
+    isRunning = True
+    while isRunning:
+        isRunning = menu()
