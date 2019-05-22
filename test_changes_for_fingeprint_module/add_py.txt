@@ -1,0 +1,50 @@
+def addUser():
+    line = "-1"
+    newFingerprint = ""
+    length = len(userFingerPrint)
+    global empty_new
+    global ID
+    
+    if(length == 0):
+        empty_new = 1
+        ID = "0"
+        
+    if(fingerPrintFunction()):
+        CLS()
+        if(ID == "0"):
+            fout = open("Users.txt", 'a')
+            print("Please press the third button (right) and wait for green light to flash! ")
+            print("After green light has flashed, scan your new fingerprint")
+            print("Once scanned, remove finger. Wait. Place finger again when green LED turns off")
+                            
+            while line == "-1":
+                if(ser.in_waiting > 0):
+                    line = ser.readline().decode().strip('\r\n')
+                    #print(line)
+                    newFingerprint = line;
+                    
+                if(line == "128"):
+                    CLS();
+                    print("Fingerprint failed to read/match!")
+                    print("Please try again")
+                    time.sleep(3)
+                    return True
+                    line = "-1"
+                elif(line == "-128"):
+                    print("Exiting")
+                    time.sleep(2)
+                    return True
+        
+        
+            #newFingerprint = input()
+            userFingerPrint.append(newFingerprint)
+            print("Add new password: ")
+            newPass = input()
+            userPassword.append(newPass)
+            userData = newFingerprint + "\t" + newPass + "\n"
+            fout.write(userData)
+            fout.close()
+        else:
+            print("Access Denied!")
+            print("Please scan the owner's fingerprint")
+            time.sleep(3)

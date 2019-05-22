@@ -1,0 +1,26 @@
+import sys
+import csv
+import time
+import RPi.GPIO as GPIO
+from hx711 import HX711
+# UART communication - Fingerprint scanner
+import serial
+ser = serial.Serial('/dev/ttyACM0', 9600)
+
+hx = HX711(5, 6)
+hx.set_reading_format("MSB", "MSB")
+hx.set_reference_unit(-422.5)
+hx.reset()
+hx.tare()
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(27,GPIO.OUT)
+
+
+userFingerPrint = []
+userPassword = []
+ItemPairs = []
+Finish = ""
+Done = ""
+ID = "-1"
+empty_new = 0

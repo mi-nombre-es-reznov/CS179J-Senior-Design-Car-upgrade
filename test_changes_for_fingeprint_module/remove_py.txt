@@ -1,0 +1,33 @@
+def removeUser():
+    pw = ""
+    line = "128"
+    global ID
+    print("Removing user")
+    if(fingerPrintFunction()):
+        if(ID != "0"):
+            CLS()
+            print("Enter your password to verify your fingerprint deletion: ")
+            pw = input()
+            if(isMatch(ID, pw)):
+                del_line = (ID + "\t" + pw)
+                del_user(del_line)
+                print("Please, press the (Middle) button to finalize delete.")
+                while line == "128":
+                    if(ser.in_waiting > 0):
+                        line = ser.readline().decode().strip('\r\n')
+                        neg_ID = ("-" + ID)
+                        if(neg_ID == line):
+                            print("\nDeletion complete!\n")
+                            time.sleep(2)
+            else:
+                print("Password is incorrect. Deletion canceled.")
+                time.sleep(2)
+        else:
+            CLS()
+            print("Owner cannot be deleted from here.")
+            print("To delete the owner, you must delete the database.")
+            print("To continue with owner deletion. Select option (7) from the menu.")
+            time.sleep(8)
+    del_line = ""
+    ID = "-1"
+    pw = ""

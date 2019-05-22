@@ -1,0 +1,45 @@
+def fingerPrintFunction():
+    line = "-1"
+    CLS()
+    global empty_new
+    
+    length = len(userFingerPrint)
+    if(length == 0):
+        print("Database is empty!!!")
+        print("Add owner's fingerprint to begin")
+        time.sleep(3)
+    else:
+        print("Enter fingerprint - button 1 (left) to exit:")        
+        while line == "-1":
+            if(ser.in_waiting > 0):
+                line = ser.readline().decode().strip('\r\n')
+                
+            if(line == "128"):
+                print("Access Denied")
+                print("Try again!")
+                line = "-1"
+
+            if (line == "-128"):
+                return False
+                programExit()
+                
+        if(in_file(line)):
+            print("Fingerprint identified")
+            print("Enter password: ")
+            userPassword = input()
+            if (isMatch(line, userPassword)):
+                print("Access granted")
+                time.sleep(2)
+                return True
+            else:
+                print("\n Access denied \n")
+                print("Enter 'c' to continue")
+                userPassword = input()
+        else:
+            print("\nAccess denied\n")
+
+    if(empty_new == 1):
+        empty_new = 0
+        return True
+    
+    return False

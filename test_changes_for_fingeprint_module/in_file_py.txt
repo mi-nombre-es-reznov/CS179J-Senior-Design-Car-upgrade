@@ -1,0 +1,8 @@
+def in_file(matchFingerPrint):
+    length = len(userFingerPrint)
+    for i in range(length):
+        if(matchFingerPrint == userFingerPrint[i]):
+            global ID
+            ID = userFingerPrint[i]
+            return True
+    return False
