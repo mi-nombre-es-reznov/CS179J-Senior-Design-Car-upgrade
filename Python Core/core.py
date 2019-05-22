@@ -1,6 +1,7 @@
 import sys
 import csv
 import time
+import mysql.connector
 import RPi.GPIO as GPIO
 from hx711 import HX711
 
@@ -171,7 +172,7 @@ def programExit():
     exit()
 
 def barCodeFunction():
-    CLS()
+#    CLS()
     D = {upc: (name) for upc, name in ItemPairs}
     DD = {name: (upc) for name, upc in ItemPairs}
     userBarcodeinput = "entry"
@@ -185,7 +186,7 @@ def barCodeFunction():
         try:
             foundItem = D[userBarcodeinput]
             print("Desposit/Withdrawl your " + foundItem)
-            Transaction(foundItem)
+            Transaction(foundItem, userBarcodeinput)
 
         except KeyError:
             print("Not in database")
@@ -222,11 +223,12 @@ def LoadBarcodes():
     else:
         print("No done code exists")
 
-def Transaction(foundItem):
+def Transaction(foundItem, userBarcodeinput):
+    mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
     D = {name: (upc) for name, upc in ItemPairs}
     startWeight = GetWeight()
     startWeight1 = str(startWeight)
-    print("Start weight is: " + startWeight1)
+    print("Start weight of fridge is: " + startWeight1)
     print("Scan \"Finish\" when you are done")
     userInput = "entry"
     finishCode = D["Finish"]
@@ -239,7 +241,42 @@ def Transaction(foundItem):
     print("End weight is: " + endWeight1)
     netWeightChange = endWeight - startWeight
     netWeightChange1 = str(netWeightChange)
-    print("Net weight is: " + netWeightChange1)
+    print("Net weight change is: " + netWeightChange1)
+    
+    mycursor = mydb.cursor()
+    sql = "SELECT Weight FROM INVENTORY WHERE UPC =" + userBarcodeinput
+    mycursor.execute(sql)
+    myresult = mycursor.fetchall()  
+    if not myresult:
+        
+        sql = "INSERT INTO INVENTORY (UPC, Name, Weight) VALUES (%s, %s, %s)"
+        val = (userBarcodeinput, foundItem, netWeightChange1)
+        mycursor.execute(sql, val)
+        mydb.commit()
+    else:
+        mycursor = mydb.cursor()
+        sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
+        mycursor.execute(sql)
+        myresult = mycursor.fetchall()
+        newResult = float(myresult[0][0])
+        netWeightUpdate = netWeightChange + newResult
+        netWeightUpdate1 = str(netWeightChange + newResult)
+        mycursor = mydb.cursor()
+        if netWeightUpdate <= 0:
+            sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
+            val = ("0", userBarcodeinput)
+            mycursor.execute(sql, val)
+            mydb.commit()
+        else:
+            sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
+            val = (netWeightUpdate1, userBarcodeinput)
+            mycursor.execute(sql, val)
+            mydb.commit()
+        sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
+        mycursor.execute(sql)
+        myresult = mycursor.fetchall()
+        print("Weight in database: " + myresult[0][0])
+
     barCodeFunction()
 
 def GetWeight():
@@ -250,19 +287,19 @@ def GetWeight():
             hx.power_down()
             hx.power_up()
             time.sleep(0.1)
-            time.sleep(3)
+            time.sleep(2)
             if val < 0:
                 return 0
       #      userGetWeight = input()
             return val
-            
+
         except(KeyboardInterrupt, SystemExit):
             print ("Cleaning...")
             GPIO.cleanup()
             print ("Bye!")
             print("getweight work")
             sys.exit()
-    
+
 
 def CLS():
     print ("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
