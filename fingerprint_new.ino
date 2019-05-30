@@ -14,7 +14,8 @@
 #include <SoftwareSerial.h>
 
 // Global variables
-int r = 0;  // Initialize value
+int r = 0;  // Initialize value - Main Menu
+int s = 0;  // Initialize value - Loop break
 int CANCEL_BUTTON = 41;  // Used to send menu back on Raspberry Pi: Button #1
 int ADD_USER = 37;       // Add User: Button #3
 int DEL_USER = 39;   // Delete database: Button #2 (used w/ button 1 && 2)
@@ -31,6 +32,7 @@ int count = 0;  // To iterate through array
 long RandomNumber;  // Used to create a random number
 int random_num; // Assign value of generated number
 bool retry = false; // Flag that tells if random_num is already in database.
+bool flag = false;  // Used to determine when to break out of loop and continue searching menu.
 
 // Call functions
 uint8_t getFingerprintEnroll(int id);
@@ -45,7 +47,6 @@ uint8_t getFingerprintEnroll(int id);
 // comment these two lines if using hardware serial
 SoftwareSerial mySerial(TX, RX);
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
-
 
                                             /*  -----------------------------------------
                                              *                 System Setup
@@ -63,13 +64,13 @@ void setup()
   Serial.begin(9600);
   while (!Serial);  // For Yun/Leo/Micro/Zero/...
   delay(100);
-  Serial.println("\n\nAdafruit finger detect test");
+  //Serial.println("\n\nAdafruit finger detect test");
 
   // set the data rate for the sensor serial port
   finger.begin(57600);
   
   if (finger.verifyPassword()) {
-    Serial.println("Found fingerprint sensor!");
+    //Serial.println("Found fingerprint sensor!");
 
     // Blinks on and off 3 times w/a 50ms wait time. (GREEN LED)
     // Nicholas - 6 May 2019
@@ -108,8 +109,8 @@ void setup()
 
   // Figure out how to find out how many fingerprints are in the database and print it.
   finger.getTemplateCount();
-  Serial.print("Sensor contains "); Serial.print(finger.templateCount); Serial.println(" templates");
-  Serial.println("Waiting for valid finger...");
+  //Serial.print("Sensor contains "); Serial.print(finger.templateCount); Serial.println(" templates");
+  //Serial.println("Waiting for valid finger...");
 }
 
                                             /*  -----------------------------------------
@@ -118,154 +119,225 @@ void setup()
 
 void loop()                     // run over and over again
 { 
-  // Turn off LEDs
+  // Turn off LEDs every cycle
   digitalWrite(RED_LED, LOW);
   digitalWrite(GREEN_LED, LOW);
 
-  // Start looping through call functions
-  getFingerprintID();
-  Wrong_order();
-  Delete_database();
+  /* --------------------------------
+   *               LEGEND
+   *   1) Read/Verify fingerprint
+   *   2) Add New User
+   *   3) Delete Individual User
+   *   4) Wrong Order
+   *   5) Delete Database
+   *   default) SHOULD NEVER ENTER
+     -------------------------------- */
 
-  // Decide what area to go: Scan fingerprint || Exit to Menu || Create new fingerprint || Delete database
-  if(digitalRead(CANCEL_BUTTON) == HIGH)
-  {
-    Exit_to_Menu();         // Check for input to send flag to exit menu
-  }
-  else if(digitalRead(ADD_USER) == HIGH)
-  {
-    // Use LEDs to indicate change of state. Turn on for two seconds. - Nicholas: 16 May 2019
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, HIGH);
-    delay(2000);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, LOW);
-    delay(1000);
-
-    finger.getTemplateCount();
-    curr_num_fingers = finger.templateCount;
-
-    if(curr_num_fingers > 0)
+    if(Serial.available())         //From RPi to Arduino
     {
-      if(current_finger == 0)
+      r = (Serial.read() - '0');  //converting the value of chars to integer
+      // Serial.println(r);
+    }
+
+
+  // Test input with Serial terminal
+
+  switch(r)
+  {
+    case 1:
+    {
+      while(1)
       {
-        // Grant access and flash
-        digitalWrite(GREEN_LED, HIGH);
-        delay(100);
-        digitalWrite(GREEN_LED, LOW);
-        delay(100);
-        digitalWrite(GREEN_LED, HIGH);
-        delay(100);
-        digitalWrite(GREEN_LED, LOW);
-        delay(100);
-        digitalWrite(GREEN_LED, HIGH);
-        delay(100);
-        digitalWrite(GREEN_LED, LOW);
-        delay(100);
+        getFingerprintID(); // Used to read/verify ID
+
+        flag = check_state(); // Check if we need to break out of loop
+        //Serial.println(flag);
         
-        // Create an array of all fingeprint ID values.
-        for (int finger = 0; finger < 128; finger++) {
-          downloadFingerprintTemplate(finger);
-        }
-    
-        // Display values of fingerprints in system
-        Serial.println("\n\n\n");
-        for(int index = 0; index < 128; index++)
+        // Cause a break of the inner while loop - Turn off sensor and wait for input again
+        if(flag == true)
         {
-          Serial.println(in_system[index]);
+          //Serial.println("State inner: ");
+          //Serial.println(flag);
+          flag = false;
+          break;
         }
-    
-        // Do-while loop to ensure number is unique
-        do
-        {
-          retry = false;  // Reset to false everytime so that true doesn't cause an infinite loop.
-          
-          random_num = gen_rand(); // Call function to generate random number
+
+        // flag = false;
+      }
       
-          // Verify the random number is unique. Otherwise, repeat until random # is unique.
-          for(int index = 0; index < 128; index++)
+      break;
+    }
+    case 2:
+    {
+      // Use LEDs to indicate change of state. Turn on for two seconds. - Nicholas: 16 May 2019
+      digitalWrite(GREEN_LED, HIGH);
+      digitalWrite(RED_LED, HIGH);
+      delay(2000);
+      digitalWrite(GREEN_LED, LOW);
+      digitalWrite(RED_LED, LOW);
+      delay(1000);
+  
+      finger.getTemplateCount();
+      curr_num_fingers = finger.templateCount;
+      // Serial.print("curr num fingers: "); Serial.println(curr_num_fingers);
+  
+      if(curr_num_fingers > 0)
+      {
+        if(current_finger == 0)
+        {
+          // Grant access and flash
+          digitalWrite(GREEN_LED, HIGH);
+          delay(100);
+          digitalWrite(GREEN_LED, LOW);
+          delay(100);
+          digitalWrite(GREEN_LED, HIGH);
+          delay(100);
+          digitalWrite(GREEN_LED, LOW);
+          delay(100);
+          digitalWrite(GREEN_LED, HIGH);
+          delay(100);
+          digitalWrite(GREEN_LED, LOW);
+          delay(100);
+          
+          // Create an array of all fingeprint ID values.
+          for (int finger = 0; finger < 128; finger++) {
+            downloadFingerprintTemplate(finger);
+          }
+      
+          // Do-while loop to ensure number is unique
+          do
           {
-            if(in_system[index] == random_num)
+            retry = false;  // Reset to false everytime so that true doesn't cause an infinite loop.
+            
+            random_num = gen_rand(); // Call function to generate random number
+        
+            // Verify the random number is unique. Otherwise, repeat until random # is unique.
+            for(int index = 0; index < 128; index++)
             {
-              retry = true;
+              if(in_system[index] == random_num)
+              {
+                retry = true;
+                break;
+              }
+            }
+          }while(retry == true);
+        
+          // Save ID in database
+          // Serial.println("Before while loop");
+          while (!  getFingerprintEnroll(random_num) )
+          {
+            flag = check_state;
+
+            if(flag == true)
+            {
+              flag = false;
               break;
             }
-          }
-        }while(retry == true);
-    
-        // Print value to serial terminal.
-        //Serial.print("Enrolling ID #");
-        Serial.println(random_num);
-      
-        // Save ID in database
-        while (!  getFingerprintEnroll(random_num) );
 
-        count = 0;  // Reset count to 0 to cause an override of values in the array so that only the unique numbers appear w/o its duplicates every iteration.
+            // flag = false;
+          }
+          // Serial.println("After while loop");
+  
+          count = 0;  // Reset count to 0 to cause an override of values in the array so that only the unique numbers appear w/o its duplicates every iteration.
+          // Serial.println("Already reset value to 0");
+        }
+        else
+        {
+          // Deny access and flash red LED
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+        }
+    
       }
       else
       {
-        // Deny access and flash red LED
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
+        while(!getFingerprintEnroll(0))
+        {
+          // Turn off fingerprint sensor
+          if(flag == true)
+          {
+            flag = false;
+            break;
+          }
+          //Serial.println("Passing flag value state. State = "); Serial.println(flag);
+        }
       }
+
+      // Serial.println("Right before break");
+      break;
+    }
+    case 3:
+    {
+      //Serial.println("Option delete a user");
+      curr_num_fingers = finger.templateCount;
+      //Serial.println(finger.templateCount); // Use to verify that the function is working, then comment out.
   
-      current_finger = -1;
-    }
-    else
-    {
-      Serial.println("Database is empty! :(");
-      Serial.println("Please scan owner's finger");
-      while(!getFingerprintEnroll(0));
-    }
-  }
-  else if(digitalRead(DEL_USER) == HIGH)
-  {
-    //Serial.println("Option delete a user");
-    curr_num_fingers = finger.templateCount;
-    //Serial.println(finger.templateCount); // Use to verify that the function is working, then comment out.
-
-    if(curr_num_fingers > 0)
-    {
-      Serial.println("Please type in the ID # (from 1 to 127) you want to delete...");
-      //uint8_t id = readnumber();
-      if (current_finger == 0) {// ID #0 not allowed, try again!
-        // Deny access and flash red LED
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
-        digitalWrite(RED_LED, HIGH);
-        delay(100);
-        digitalWrite(RED_LED, LOW);
-        delay(100);
+      if(curr_num_fingers > 0)
+      {
+        //Serial.println("Please type in the ID # (from 1 to 127) you want to delete...");
+        //uint8_t id = readnumber();
+        if (current_finger == 0) {// ID #0 not allowed, try again!
+          // Deny access and flash red LED
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+          digitalWrite(RED_LED, HIGH);
+          delay(100);
+          digitalWrite(RED_LED, LOW);
+          delay(100);
+          
+          return; // Do not execute deletion of fingerprint 0
+        }
+  
+        // Inform user of what is finger is being deleted.
+        //Serial.print("Deleting ID #");
+        //Serial.println(current_finger);
         
-        return; // Do not execute deletion of fingerprint 0
+        deleteFingerprint(current_finger);
       }
 
-      // Inform user of what is finger is being deleted.
-      Serial.print("Deleting ID #");
-      Serial.println(current_finger);
-      
-      deleteFingerprint(current_finger);
+      break;
+    }
+    case 4:
+    {
+      Wrong_order();  // Used when the user tries to access things out of order
+
+      break;
+    }
+    case 5:
+    {
+      Delete_database();  // Used to delete entire database
+
+      break;
+    }
+    default:
+    {
+      // Serial.println("Invalid input");
+      break;
     }
   }
 
   // End of options - loop through process again
   delay(100);            //don't ned to run this at full speed.
+  r = -1; // Reset value to 0 every iteration to keep it within the loop awaiting instructions of what state to enter.
+  s = -1; // Reset value to turn off sensor
+  // current_finger = -1;  // Reset the current finger ID
+  flag = false;
 }
 
                                             /*  -----------------------------------------
@@ -332,7 +404,7 @@ uint8_t getFingerprintID() {
     return p;
   } else if (p == FINGERPRINT_NOTFOUND) {    
     //Serial.println("Did not find a match");
-    Serial.println(-1); // Nicholas - 15 May 2019
+    Serial.println(128); // Nicholas - 15 May 2019
     digitalWrite(RED_LED, HIGH);
     delay(2000);
     digitalWrite(RED_LED, LOW);
@@ -378,51 +450,41 @@ int getFingerprintIDez() {
    ------------------------------------------------------------------------------------------------------------------------------------------------------ */
 void Wrong_order()
 {
-    if(Serial.available()){         //From RPi to Arduino
-    r = (Serial.read() - '0');  //conveting the value of chars to integer
-    Serial.println(r);
-  }
+  // Turn off both LEDs just in case - Nicholas: 16 May 2019
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
 
-  if(r == 3)
-  {
-    // Turn off both LEDs just in case - Nicholas: 16 May 2019
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, LOW);
+  // Flash LEDS on/off w/opposite lights - Nicholas: 16 May 2019
+  digitalWrite(GREEN_LED, HIGH);
+  delay(50);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  delay(50);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  delay(50);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  delay(50);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  delay(50);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  delay(50);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  delay(50);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, HIGH);
+  delay(50);
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  delay(50);
 
-    // Flash LEDS on/off w/opposite lights - Nicholas: 16 May 2019
-    digitalWrite(GREEN_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, LOW);
-    delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, LOW);
-    delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, LOW);
-    delay(50);
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, HIGH);
-    delay(50);
-    digitalWrite(GREEN_LED, HIGH);
-    digitalWrite(RED_LED, LOW);
-    delay(50);
-
-    // Turn off both LEDs after execution - Nicholas: 16 May 2019
-    digitalWrite(GREEN_LED, LOW);
-    digitalWrite(RED_LED, LOW);
-
-    r = 0;  // Reset value of 'r' so that execution of lights doesn't constantly execute.
-  }
+  // Turn off both LEDs after execution - Nicholas: 16 May 2019
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(RED_LED, LOW);
 }
 
                                             /*  -----------------------------------------
@@ -432,27 +494,27 @@ void Wrong_order()
 /* ---------------------------------------------------------------------------------------------
     Check if user wants to exit menu. If pushed, send flag of '-128' to Raspberry Pi to Main Menu
    --------------------------------------------------------------------------------------------- */
-void Exit_to_Menu() // Nicholas - 16 May 2019
-{
-  // Turn the LED on/off 3 times to let user know command was sent. - Nicholas 16 May 2019  
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(GREEN_LED, LOW);
-  delay(1000);
-  digitalWrite(RED_LED, HIGH);
-  digitalWrite(GREEN_LED, HIGH);
-  delay(500);
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(GREEN_LED, LOW);
-  delay(1000);
-  digitalWrite(RED_LED, HIGH);
-  digitalWrite(GREEN_LED, HIGH);
-  delay(500);
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(GREEN_LED, LOW);
-  delay(1000);
-  
-  Serial.println(-128); // Send '-128' value to the Raspberry Pi. - Nicholas 16 May 2019
-}
+//void Exit_to_Menu() // Nicholas - 16 May 2019
+//{
+//  // Turn the LED on/off 3 times to let user know command was sent. - Nicholas 16 May 2019  
+//  digitalWrite(RED_LED, LOW);
+//  digitalWrite(GREEN_LED, LOW);
+//  delay(1000);
+//  digitalWrite(RED_LED, HIGH);
+//  digitalWrite(GREEN_LED, HIGH);
+//  delay(500);
+//  digitalWrite(RED_LED, LOW);
+//  digitalWrite(GREEN_LED, LOW);
+//  delay(1000);
+//  digitalWrite(RED_LED, HIGH);
+//  digitalWrite(GREEN_LED, HIGH);
+//  delay(500);
+//  digitalWrite(RED_LED, LOW);
+//  digitalWrite(GREEN_LED, LOW);
+//  delay(1000);
+//  
+//  Serial.println(-128); // Send '-128' value to the Raspberry Pi. - Nicholas 16 May 2019
+//}
 
                                             /*  -----------------------------------------
                                              *                 Add New User
@@ -463,17 +525,23 @@ void Exit_to_Menu() // Nicholas - 16 May 2019
    ----------------------------------------------------------------------------------------------------------------------------------- */
 uint8_t getFingerprintEnroll(int id) {
   uint8_t p = -1;
-  Serial.println("Waiting for valid finger to enroll");
+  //Serial.println("Waiting for valid finger to enroll");
   while (p != FINGERPRINT_OK) {
+      flag = check_state();
+      if(flag == true)
+      {
+        break;
+      }
+    //Serial.println("Stuck 1");
     p = finger.getImage();
     switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image taken");
+      //Serial.println("Image taken");
       digitalWrite(GREEN_LED, HIGH); // Nicholas - 6 May 2019
       delay(2000);
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.println(".");
+      //Serial.println(".");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
@@ -487,10 +555,12 @@ uint8_t getFingerprintEnroll(int id) {
     }
       
     // Check for button press for canceling fingerprint entry.
-    if(digitalRead(CANCEL_BUTTON) == HIGH)
-    {
-      break;  // Break out of infinite loop.
-    }
+//    if(digitalRead(CANCEL_BUTTON) == HIGH)
+//    {
+//      //Serial.println(-128);
+//      loop();
+//      break;  // Break out of infinite loop.
+//    }
   }
 
   // OK success!
@@ -498,7 +568,7 @@ uint8_t getFingerprintEnroll(int id) {
   p = finger.image2Tz(1);
   switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image converted");
+      //Serial.println("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
       Serial.println("Image too messy");
@@ -510,48 +580,59 @@ uint8_t getFingerprintEnroll(int id) {
       Serial.println("Could not find fingerprint features");
       return p;
     case FINGERPRINT_INVALIDIMAGE:
-      Serial.println("Could not find fingerprint features");
+      // Serial.println("Could not find fingerprint features");
       return p;
     default:
       Serial.println("Unknown error");
       return p;
   }
   
-  Serial.println("Remove finger");
+  //Serial.println("Remove finger");
   delay(2000);
   p = 0;
   while (p != FINGERPRINT_NOFINGER) {
     p = finger.getImage();
     digitalWrite(GREEN_LED, LOW); // Nicholas - 6 May 2019
     digitalWrite(RED_LED, LOW);   // Nicholas 19 May 2019
+
+//    if(CANCEL_BUTTON == HIGH)
+//    {
+//      break;
+//    }
+
+    //Serial.println("Stuck 2");
   }
 
   p = -1;
-  Serial.println("Place same finger again");
+  //Serial.println("Place same finger again");
   while (p != FINGERPRINT_OK) {
+      if(flag == true)
+      {
+        break;
+      }
     p = finger.getImage();
     switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image taken");
+      //Serial.println("Image taken");
       break;
     case FINGERPRINT_NOFINGER:
-      Serial.print(".");
+      //Serial.print(".");
       break;
     case FINGERPRINT_PACKETRECIEVEERR:
       Serial.println("Communication error");
       break;
     case FINGERPRINT_IMAGEFAIL:
-      Serial.println("Imaging error");
+      // Serial.println("Imaging error");
       break;
     default:
       Serial.println("Unknown error");
       break;
       
       // Check for button press for canceling fingerprint entry.
-      if(digitalRead(CANCEL_BUTTON) == HIGH)
-      {
-        break;  // Break out of infinite loop.
-      }
+//      if(digitalRead(CANCEL_BUTTON) == HIGH)
+//      {
+//        break;  // Break out of infinite loop.
+//      }
     }
   }
 
@@ -560,7 +641,7 @@ uint8_t getFingerprintEnroll(int id) {
   p = finger.image2Tz(2);
   switch (p) {
     case FINGERPRINT_OK:
-      Serial.println("Image converted");
+      //Serial.println("Image converted");
       break;
     case FINGERPRINT_IMAGEMESS:
       Serial.println("Image too messy");
@@ -569,10 +650,10 @@ uint8_t getFingerprintEnroll(int id) {
       Serial.println("Communication error");
       return p;
     case FINGERPRINT_FEATUREFAIL:
-      Serial.println("Could not find fingerprint features");
+      // Serial.println("Could not find fingerprint features");
       return p;
     case FINGERPRINT_INVALIDIMAGE:
-      Serial.println("Could not find fingerprint features");
+      // Serial.println("Could not find fingerprint features");
       return p;
     default:
       Serial.println("Unknown error");
@@ -583,14 +664,15 @@ uint8_t getFingerprintEnroll(int id) {
   // OK converted!
   p = finger.createModel();
   if (p == FINGERPRINT_OK) {
-    Serial.println("Prints matched!");
+    //Serial.println("Prints matched!");
     digitalWrite(GREEN_LED, HIGH); // Nicholas - 6 May 2019
     delay(2000);
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
     return p;
   } else if (p == FINGERPRINT_ENROLLMISMATCH) {
-    Serial.println("Fingerprints did not match");
+    //Serial.println("Fingerprints did not match");
+    Serial.println(128);
     digitalWrite(RED_LED, HIGH); // Nicholas - 6 May 2019
     delay(2000);
     return p;
@@ -601,7 +683,8 @@ uint8_t getFingerprintEnroll(int id) {
   
   p = finger.storeModel(id);
   if (p == FINGERPRINT_OK) {
-    Serial.println("Stored!");
+    //Serial.println("Stored!");
+    Serial.println(random_num); // Write value to system. This verifies that the number was saved correctly and is ready to send to RPi.
   } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
     return p;
@@ -621,16 +704,17 @@ uint8_t getFingerprintEnroll(int id) {
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(RED_LED, LOW);
   
-    if(digitalRead(CANCEL_BUTTON) == HIGH)
-    {
-      Serial.println("New fingerprint canceled.\nPlease scan your finger.");
-      // Use LEDs to indicate change of state. Turn on for two seconds. - Nicholas: 16 May 2019
-      digitalWrite(GREEN_LED, HIGH);
-      digitalWrite(RED_LED, HIGH);
-      delay(2000);
-      digitalWrite(GREEN_LED, LOW);
-      digitalWrite(RED_LED, LOW);
-    }
+//    if(digitalRead(CANCEL_BUTTON) == HIGH)
+//    {
+//      Serial.println(-128);
+//      //Serial.println("New fingerprint canceled.\nPlease scan your finger.");
+//      // Use LEDs to indicate change of state. Turn on for two seconds. - Nicholas: 16 May 2019
+//      digitalWrite(GREEN_LED, HIGH);
+//      digitalWrite(RED_LED, HIGH);
+//      delay(2000);
+//      digitalWrite(GREEN_LED, LOW);
+//      digitalWrite(RED_LED, LOW);
+//    }
 }
 
                                             /*  -----------------------------------------
@@ -642,99 +726,95 @@ uint8_t getFingerprintEnroll(int id) {
    ----------------------------------------------------------------------------------------------------------------------------------- */
 void Delete_database()
 {
-    if(Serial.available()){         //From RPi to Arduino
-    r = (Serial.read() - '0');  //conveting the value of chars to integer
-    Serial.println(r);
-    }
+  // Figure out how to find out how many fingerprints are in the database and print it.
+  curr_num_fingers = finger.templateCount;
+  
+  // Verify there are fingerprints in the database.
+  if(curr_num_fingers > 0)
+  {
+    // LED flashing sequence to let user know database is being deleted
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, HIGH);
+    delay(500);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    delay(500);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, HIGH);
+    delay(500);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    delay(500);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, HIGH);
+    delay(500);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    delay(500);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, HIGH);
+    delay(2000);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    delay(1000);
+    digitalWrite(GREEN_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    
+    // Turn off both LEDs after execution - Nicholas: 16 May 2019
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    
+    finger.emptyDatabase();
+    //Serial.println("Now database is empty :)");
+    //Serial.println(-200);
 
-    if(r == -200)
-    {
-      // Figure out how to find out how many fingerprints are in the database and print it.
-      //finger.getTemplateCount();
-      curr_num_fingers = finger.templateCount;
-      Serial.println(finger.templateCount); // Use to verify that the function is working, then comment out.
-      
-      // Verify there are fingerprints in the database.
-      if(curr_num_fingers > 0)
-      {
-          // Call to empty database
-          if (finger.verifyPassword()) {
-            Serial.println("Found fingerprint sensor!");
-          } else {
-            Serial.println("Did not find fingerprint sensor :(");
-            while (1);
-          }
-          
-          // LED flashing sequence to let user know database is being deleted
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, HIGH);
-          delay(500);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, LOW);
-          delay(500);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, HIGH);
-          delay(500);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, LOW);
-          delay(500);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, HIGH);
-          delay(500);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, LOW);
-          delay(500);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, HIGH);
-          delay(2000);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, LOW);
-          delay(1000);
-          digitalWrite(GREEN_LED, HIGH);
-          delay(50);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, HIGH);
-          delay(50);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, LOW);
-          delay(50);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, HIGH);
-          delay(50);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, LOW);
-          delay(50);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, HIGH);
-          delay(50);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, LOW);
-          delay(50);
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, HIGH);
-          delay(50);
-          digitalWrite(GREEN_LED, HIGH);
-          digitalWrite(RED_LED, LOW);
-          delay(50);
-          
-          // Turn off both LEDs after execution - Nicholas: 16 May 2019
-          digitalWrite(GREEN_LED, LOW);
-          digitalWrite(RED_LED, LOW);
-          
-          finger.emptyDatabase();
-          Serial.println("Now database is empty :)");
-
-          // Reset values
-          current_finger = -1;
-          curr_num_fingers = -1;
-      }
-      else
-      {
-        Serial.println("Database is already empty :("); // Let user know there are no fingerprints. - Nicholas: 16 May 2019
-      }
-    }
-
-    r = -1;
+    // Reset values
+    //current_finger = -1;
+    //curr_num_fingers = -1;
+  }
+  else
+  {
+    // Serial.println("Database is already empty :("); // Let user know there are no fingerprints. - Nicholas: 16 May 2019
+    // Serial.println(200);
+    
+    // Deny access and flash red LED
+    digitalWrite(RED_LED, HIGH);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, HIGH);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    delay(100);
+    digitalWrite(RED_LED, HIGH);
+    delay(100);
+    digitalWrite(RED_LED, LOW);
+    delay(100);
+  }
 }
 
                                             /*  -----------------------------------------
@@ -751,55 +831,59 @@ uint8_t deleteFingerprint(uint8_t id) {
   int delete_finger_val = 0;
 
   if (p == FINGERPRINT_OK) {
-    Serial.println("Deleted!");
+    //Serial.println("Deleted!");
 
-        // Flash LEDs to give confirmation that the most recent scanned fingerprint was deleted.
-        digitalWrite(GREEN_LED, HIGH);
-        delay(50);
-        digitalWrite(GREEN_LED, LOW);
-        digitalWrite(RED_LED, HIGH);
-        delay(50);
-        digitalWrite(GREEN_LED, HIGH);
-        digitalWrite(RED_LED, LOW);
-        delay(50);
-        digitalWrite(GREEN_LED, LOW);
-        digitalWrite(RED_LED, HIGH);
-        delay(50);
-        digitalWrite(GREEN_LED, HIGH);
-        digitalWrite(RED_LED, LOW);
-        delay(50);
-        digitalWrite(GREEN_LED, LOW);
-        digitalWrite(RED_LED, HIGH);
-        delay(50);
-        digitalWrite(GREEN_LED, HIGH);
-        digitalWrite(RED_LED, LOW);
-        delay(50);
-        digitalWrite(GREEN_LED, LOW);
-        digitalWrite(RED_LED, HIGH);
-        delay(50);
-        digitalWrite(GREEN_LED, HIGH);
-        digitalWrite(RED_LED, LOW);
-        delay(50);
-        digitalWrite(GREEN_LED, LOW);
-        digitalWrite(RED_LED, LOW);
-        // Send data to RPi to delete from its local database
-        delete_finger_val = (id * -1);
-        Serial.println(delete_finger_val);
-  } else if (p == FINGERPRINT_PACKETRECIEVEERR) {
+    // Flash LEDs to give confirmation that the most recent scanned fingerprint was deleted.
+    digitalWrite(GREEN_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+    delay(50);
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+    delay(50);
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, LOW);
+    // Send data to RPi to delete from its local database
+    delete_finger_val = (id * -1);
+    Serial.println(delete_finger_val);
+  } 
+  else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
     return p;
-  } else if (p == FINGERPRINT_BADLOCATION) {
-    Serial.println("Could not delete in that location");
+  } 
+  else if (p == FINGERPRINT_BADLOCATION) {
+    //Serial.println("Could not delete in that location");
     Serial.println(-200);
     // Light LED red
     digitalWrite(RED_LED, HIGH);
     delay(2000);
     digitalWrite(RED_LED, LOW);
     return p;
-  } else if (p == FINGERPRINT_FLASHERR) {
+  } 
+  else if (p == FINGERPRINT_FLASHERR) {
     Serial.println("Error writing to flash");
     return p;
-  } else {
+  } 
+  else {
     Serial.print("Unknown error: 0x"); Serial.println(p, HEX);
     return p;
   }   
@@ -818,8 +902,8 @@ uint8_t deleteFingerprint(uint8_t id) {
 int gen_rand()
 {
       RandomNumber = random(1,128);
-      Serial.print("The Random number is: ");
-      Serial.println(RandomNumber);
+      //Serial.print("The Random number is: ");
+      //Serial.println(RandomNumber);
 
       // Random seed
       randomSeed(analogRead(A0));
@@ -853,4 +937,22 @@ uint8_t downloadFingerprintTemplate(uint16_t id)
       //Serial.print("Unknown error "); Serial.println(p);
       return p;
   }
+}
+
+bool check_state()
+{
+  if(Serial.available())         //From RPi to Arduino
+  {
+    s = (Serial.read() - '0');  //converting the value of chars to integer
+    // Serial.println(s);
+  }
+
+  if(s == 6)
+  {
+    //Serial.println("Entered return true");
+    s = -1; // Reset value
+    return true;
+  }
+
+  return false;
 }
