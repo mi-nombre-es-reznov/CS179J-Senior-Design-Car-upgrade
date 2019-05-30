@@ -14,14 +14,11 @@ hx.tare()
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(27,GPIO.OUT)
 
-
 userFingerPrint = []
 userPassword = []
 ItemPairs = []
 Finish = ""
 Done = ""
-
-
 
 def menu():
     CLS()
@@ -32,14 +29,11 @@ def menu():
     print ("3) Add/Remove Item ")
     print ("4) Add Barcode ")
     print ("5) Remove Barcode ")
-    print ("6) Test I/O Menu")
     print ("Choice: ")
 
     userInput = input()
 
-    if userInput == "9":
-        viewBarcodes()
-    elif userInput == "0":
+    if userInput == "0":
         programExit()
     elif userInput == "1":
         addUser()
@@ -51,10 +45,6 @@ def menu():
         addBarcode()
     elif userInput == "5":
         removeBarcode()
-    elif userInput == "6":
-        testIOMenu()
-    elif userInput == "8":
-        return False
     else:
         print("Wrong choice")
     return True
@@ -62,34 +52,59 @@ def menu():
 def openSolenoid():
     GPIO.output(27,0)
 
-
 def closeSolenoid():
     GPIO.output(27,1)
 
-def viewBarcodes():
-    CLS()
-    print ("In view barcodes")
-
 def addUser():
+    # check for existing user credentials,
+    # add user fingerprint to both fingerprint sensor and database with Name and Password
     CLS()
-    if(fingerPrintFunction()):
-        fout = open("Users.txt", 'a')
-        CLS()
+    if(TwoFactorAuth()):
+        # Add fingerprint to fingerprint sensor database, return UID from sensor database into UID
         print("Add new fingerprint: ")
-        newFingerprint = input()
-        userFingerPrint.append(newFingerprint)
-        print("Add new password: ")
-        newPass = input()
-        userPassword.append(newPass)
-        userData = newFingerprint + "\t" + newPass + "\n"
-        fout.write(userData)
-        fout.close()
+        UID = input() #replace with fingerprint sensor UID
+        print("Add Name: ")
+        Name = input()
+        print("Add Password: ")
+        Password = input()
+        mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
+        mycursor = mydb.cursor()
+        sql = "INSERT INTO USERS (UID, Name, Password) VALUES (%s, %s, %s)"
+        val = (UID, Name, Password)
+        mycursor.execute(sql,val)
+        mydb.commit()
+        mydb.close()
+    return
 
 def removeUser():
-    print("Removing user")
+    # check for existing user credentials,
+    # add user fingerprint to both fingerprint sensor and database with Name and Password
+    CLS()
+    if(TwoFactorAuth()):
+        # Add fingerprint to fingerprint sensor database, return UID from sensor database into UID
+        print("Add fingerprint to remove: ")
+        UID = input() #replace with fingerprint sensor UID
+        mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
+        mycursor = mydb.cursor()
+        sql = "SELECT Name FROM USERS WHERE UID =" + UID
+        mycursor.execute(sql)
+        myresult = mycursor.fetchall()
+        print("Removing: " + myresult[0][0] + "...")
+
+        mycursor = mydb.cursor()
+        sql = "DELETE FROM USERS WHERE UID =" + UID
+        mycursor.execute(sql)
+        mydb.commit()
+        mydb.close()
+
+        print("Removed..")
+
+        print("Enter c to continue")
+        UID = input()
+    return
 
 def Login():
-    if fingerPrintFunction():
+    if TwoFactorAuth():
         openSolenoid()
         barCodeFunction()
 
@@ -130,27 +145,21 @@ def removeBarcode():
         print("Barcode does not exist")
         removeBarcode()
 
-
-def testIOMenu():
-    CLS()
-    print ("Welcome to the I/O Testing Menu ")
-    print ("0) Exit ")
-    print ("1) Test solenoid open ")
-    print ("2) Test solenoid close ")
-    print ("Choice: ")
-
-
-def fingerPrintFunction():
+def TwoFactorAuth():
+    # connect to DB
+    # verify fingerprint and Password
+    # return true/false if exist or not
     userFingerPrint = ""
-    while userFingerPrint != "-1":
+    userPassword = ""
+    while userFingerPrint != "128":
         CLS()
-        print("Enter fingerprint (-1 to exit)")
-        userFingerPrint = input()
-        if (userFingerPrint == "999" or userFingerPrint == "-1"):
+        print("Enter fingerprint: ")
+        userFingerPrint = input() # replace with actual fingerprint sensor
+        if (userFingerPrint == "128"):
             return False
-            programExit()
         print("Enter password: ")
         userPassword = input()
+        # query database with UID and password, verify validity
         if (isMatch(userFingerPrint, userPassword)):
             print("Access granted")
             return True
@@ -161,18 +170,22 @@ def fingerPrintFunction():
     return False
 
 def isMatch(matchFingerPrint, matchPassword):
-    length = len(userFingerPrint)
-    for i in range (length):
-        if (matchFingerPrint == userFingerPrint[i] and matchPassword == userPassword[i]):
-            return True
-
-    return False
-
+    mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
+    # query database with UID and password, verify validity
+    mycursor = mydb.cursor()
+    sql = "SELECT UID, Password FROM USERS WHERE UID = %s AND Password = %s"
+    val = (matchFingerPrint, matchPassword)
+    mycursor.execute(sql,val)
+    myresult = mycursor.fetchall()
+    mydb.close()
+    if myresult:
+        return True
+    else:
+        return False
 def programExit():
     exit()
 
 def barCodeFunction():
-#    CLS()
     D = {upc: (name) for upc, name in ItemPairs}
     DD = {name: (upc) for name, upc in ItemPairs}
     userBarcodeinput = "entry"
@@ -192,19 +205,7 @@ def barCodeFunction():
             print("Not in database")
             print("Press 'c' to continue")
             userBarcodeinput = input()
-
     return
-
-
-def LoadUser():
-    with open('Users.txt','r') as f:
-        reader=csv.reader(f,delimiter='\t')
-        for finger,password in reader:
-            userFingerPrint.append(finger)
-            userPassword.append(password)
-    print("in load user")
-
-    f.close()
 
 def LoadBarcodes():
     with open('ItemBarcodes.txt','r') as f:
@@ -246,7 +247,7 @@ def Transaction(foundItem, userBarcodeinput):
     mycursor = mydb.cursor()
     sql = "SELECT Weight FROM INVENTORY WHERE UPC =" + userBarcodeinput
     mycursor.execute(sql)
-    myresult = mycursor.fetchall()  
+    myresult = mycursor.fetchall()
     if not myresult:
         
         sql = "INSERT INTO INVENTORY (UPC, Name, Weight) VALUES (%s, %s, %s)"
@@ -254,43 +255,41 @@ def Transaction(foundItem, userBarcodeinput):
         mycursor.execute(sql, val)
         mydb.commit()
     else:
-        mycursor = mydb.cursor()
-        sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
-        mycursor.execute(sql)
-        myresult = mycursor.fetchall()
         newResult = float(myresult[0][0])
         netWeightUpdate = netWeightChange + newResult
         netWeightUpdate1 = str(netWeightChange + newResult)
         mycursor = mydb.cursor()
-        if netWeightUpdate <= 0:
+        if netWeightUpdate <= 2:
             sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
             val = ("0", userBarcodeinput)
             mycursor.execute(sql, val)
             mydb.commit()
+            sql = "DELETE FROM INVENTORY WHERE UPC =" + userBarcodeinput
+            mycursor.execute(sql)
+            mydb.commit()
+            print(foundItem + " has been removed.")
         else:
             sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
             val = (netWeightUpdate1, userBarcodeinput)
             mycursor.execute(sql, val)
             mydb.commit()
-        sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
-        mycursor.execute(sql)
-        myresult = mycursor.fetchall()
-        print("Weight in database: " + myresult[0][0])
-
-    barCodeFunction()
+            sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
+            mycursor.execute(sql)
+            myresult = mycursor.fetchall()
+            print("Weight in database: " + myresult[0][0])
+    mydb.close()
+    return
 
 def GetWeight():
     while True:
         try:
             val = hx.get_weight(5)
-      #      print(val)
             hx.power_down()
             hx.power_up()
             time.sleep(0.1)
             time.sleep(2)
             if val < 0:
                 return 0
-      #      userGetWeight = input()
             return val
 
         except(KeyboardInterrupt, SystemExit):
@@ -300,12 +299,10 @@ def GetWeight():
             print("getweight work")
             sys.exit()
 
-
 def CLS():
     print ("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
 if __name__ == '__main__':
-    LoadUser()
     LoadBarcodes()
     isRunning = True
     while isRunning:
