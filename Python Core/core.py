@@ -1,9 +1,16 @@
 import sys
 import csv
 import time
+import serial
 import mysql.connector
 import RPi.GPIO as GPIO
 from hx711 import HX711
+import io
+import picamera
+import cv2
+import numpy
+
+ser = serial.Serial('/dev/ttyACM0', 9600)
 
 hx = HX711(5, 6)
 hx.set_reading_format("MSB", "MSB")
@@ -45,9 +52,16 @@ def menu():
         addBarcode()
     elif userInput == "5":
         removeBarcode()
+    elif userInput == "DELETE":
+        deleteFingerPrintDB()
+    elif userInput == "cam":
+        Intruder()
     else:
         print("Wrong choice")
     return True
+
+def deleteFingerPrintDB():
+    ser.write(b'5')
 
 def openSolenoid():
     GPIO.output(27,0)
@@ -55,14 +69,57 @@ def openSolenoid():
 def closeSolenoid():
     GPIO.output(27,1)
 
+def fingerprintcheck():
+    # Send the value to the Elegoo
+    ser.write(b'1')
+    
+    # Clear screen and prompt user for fingerprint
+    CLS()
+    print("Please scan your fingerprint")
+    line = ""
+    while line == "":
+        if(ser.in_waiting > 0):
+            line = ser.readline().decode().strip('\r\n')
+            uid = line
+    # Send value to Elegoo to shut off sensor
+    ser.write(b'6')
+    return uid
+
+def fingerprintremove():
+    uid = fingerprintcheck()
+    ser.write(b'3')
+    return uid
+
+def fingerprintadd():
+    ser.write(b'2')
+    line = ""
+    while line == "":
+        if(ser.in_waiting > 0):
+            line = ser.readline().decode().strip('\r\n')
+            uid = line;
+    ser.write(b'6')
+    return uid
+def isDBempty():
+    mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
+    mycursor = mydb.cursor()
+    sql = "SELECT * FROM USERS"
+    mycursor.execute(sql)
+    myresult = mycursor.fetchall()
+    mydb.close()
+    if myresult:
+        return False
+    else:
+        return True
+
 def addUser():
     # check for existing user credentials,
     # add user fingerprint to both fingerprint sensor and database with Name and Password
     CLS()
-    if(TwoFactorAuth()):
+    if(isDBempty() or TwoFactorAuth() == "0"):
         # Add fingerprint to fingerprint sensor database, return UID from sensor database into UID
         print("Add new fingerprint: ")
-        UID = input() #replace with fingerprint sensor UID
+        UID = fingerprintadd()
+        # UID = input() #repl ace with fingerprint sensor UID
         print("Add Name: ")
         Name = input()
         print("Add Password: ")
@@ -74,6 +131,10 @@ def addUser():
         mycursor.execute(sql,val)
         mydb.commit()
         mydb.close()
+    else:
+        print("Not Master Finger")
+        print("Enter c to continue...")
+        input()
     return
 
 def removeUser():
@@ -83,7 +144,8 @@ def removeUser():
     if(TwoFactorAuth()):
         # Add fingerprint to fingerprint sensor database, return UID from sensor database into UID
         print("Add fingerprint to remove: ")
-        UID = input() #replace with fingerprint sensor UID
+        UID = fingerprintremove()
+        # UID = input() #repl ace with fingerprint sensor UID
         mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
         mycursor = mydb.cursor()
         sql = "SELECT Name FROM USERS WHERE UID =" + UID
@@ -102,12 +164,23 @@ def removeUser():
         print("Enter c to continue")
         UID = input()
     return
+def getUsernamefromuid(fid):
+    mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
+    mycursor = mydb.cursor()
+    sql = "SELECT Name FROM USERS WHERE UID =" + fid
+    mycursor.execute(sql)
+    myresult = mycursor.fetchall()
+    mydb.close()
+    return myresult[0][0]
 
 def Login():
-    if TwoFactorAuth():
+    #finger id
+    fid = TwoFactorAuth()
+    if fid != 128:
         openSolenoid()
-        barCodeFunction()
-
+        username = getUsernamefromuid(fid)
+        print(username)
+        barCodeFunction(username)
 
 def addBarcode():
     CLS()
@@ -154,20 +227,22 @@ def TwoFactorAuth():
     while userFingerPrint != "128":
         CLS()
         print("Enter fingerprint: ")
-        userFingerPrint = input() # replace with actual fingerprint sensor
+        userFingerPrint = fingerprintcheck()
+        # userFingerPrint = input() # repl ace with actual fingerprint sensor
         if (userFingerPrint == "128"):
-            return False
+            return userFingerPrint
         print("Enter password: ")
         userPassword = input()
         # query database with UID and password, verify validity
         if (isMatch(userFingerPrint, userPassword)):
             print("Access granted")
-            return True
+            return userFingerPrint
         else:
             print("\n Access denied \n")
             print("Enter 'c' to continue")
             userPassword = input()
-    return False
+            return "128"
+    return userFingerPrint
 
 def isMatch(matchFingerPrint, matchPassword):
     mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
@@ -185,7 +260,7 @@ def isMatch(matchFingerPrint, matchPassword):
 def programExit():
     exit()
 
-def barCodeFunction():
+def barCodeFunction(username):
     D = {upc: (name) for upc, name in ItemPairs}
     DD = {name: (upc) for name, upc in ItemPairs}
     userBarcodeinput = "entry"
@@ -199,7 +274,7 @@ def barCodeFunction():
         try:
             foundItem = D[userBarcodeinput]
             print("Desposit/Withdrawl your " + foundItem)
-            Transaction(foundItem, userBarcodeinput)
+            Transaction(foundItem, userBarcodeinput, username)
 
         except KeyError:
             print("Not in database")
@@ -224,7 +299,7 @@ def LoadBarcodes():
     else:
         print("No done code exists")
 
-def Transaction(foundItem, userBarcodeinput):
+def Transaction(foundItem, userBarcodeinput, username):
     mydb = mysql.connector.connect(user='bob', password='dbasdf', host='127.0.0.1', database='dbSecureFridge')
     D = {name: (upc) for name, upc in ItemPairs}
     startWeight = GetWeight()
@@ -250,8 +325,8 @@ def Transaction(foundItem, userBarcodeinput):
     myresult = mycursor.fetchall()
     if not myresult:
         
-        sql = "INSERT INTO INVENTORY (UPC, Name, Weight) VALUES (%s, %s, %s)"
-        val = (userBarcodeinput, foundItem, netWeightChange1)
+        sql = "INSERT INTO INVENTORY (UPC, Name, Weight, User) VALUES (%s, %s, %s, %s)"
+        val = (userBarcodeinput, foundItem, netWeightChange1, username)
         mycursor.execute(sql, val)
         mydb.commit()
     else:
@@ -260,8 +335,8 @@ def Transaction(foundItem, userBarcodeinput):
         netWeightUpdate1 = str(netWeightChange + newResult)
         mycursor = mydb.cursor()
         if netWeightUpdate <= 2:
-            sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
-            val = ("0", userBarcodeinput)
+            sql = "UPDATE INVENTORY SET Weight = %s, User = %s WHERE UPC = %s"
+            val = ("0", username, userBarcodeinput)
             mycursor.execute(sql, val)
             mydb.commit()
             sql = "DELETE FROM INVENTORY WHERE UPC =" + userBarcodeinput
@@ -269,8 +344,8 @@ def Transaction(foundItem, userBarcodeinput):
             mydb.commit()
             print(foundItem + " has been removed.")
         else:
-            sql = "UPDATE INVENTORY SET Weight = %s WHERE UPC = %s"
-            val = (netWeightUpdate1, userBarcodeinput)
+            sql = "UPDATE INVENTORY SET Weight = %s, User = %s WHERE UPC = %s"
+            val = (netWeightUpdate1, username, userBarcodeinput)
             mycursor.execute(sql, val)
             mydb.commit()
             sql = "SELECT Weight FROM INVENTORY WHERE UPC=" + userBarcodeinput
@@ -298,6 +373,40 @@ def GetWeight():
             print ("Bye!")
             print("getweight work")
             sys.exit()
+
+def Intruder():
+    #Create a memory stream so photos doesn't need to be saved in a file
+    stream = io.BytesIO()
+
+    #Get the picture (low resolution, so it should be quite fast)
+    #Here you can also specify other parameters (e.g.:rotate the image)
+    with picamera.PiCamera() as camera:
+        camera.resolution = (2592, 1944) # Changed to a much higher quality. It isn't much slower.
+        camera.capture(stream, format='jpeg')
+
+    #Convert the picture into a numpy array
+    buff = numpy.fromstring(stream.getvalue(), dtype=numpy.uint8)
+
+    #Now creates an OpenCV image
+    image = cv2.imdecode(buff, 1)
+
+    #Load a cascade file for detecting faces
+    face_cascade = cv2.CascadeClassifier('faces.xml')
+
+    #Convert to grayscale
+    gray = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+
+    #Look for faces in the image using the loaded cascade file
+    faces = face_cascade.detectMultiScale(gray, 1.1, 5)
+
+    print("Found "+str(len(faces))+" face(s)")
+
+    #Draw a rectangle around every found face
+    for (x,y,w,h) in faces:
+        cv2.rectangle(image,(x,y),(x+w,y+h),(255,255,0),2)
+
+    #Save the result image
+    cv2.imwrite('result.jpg',image)
 
 def CLS():
     print ("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")

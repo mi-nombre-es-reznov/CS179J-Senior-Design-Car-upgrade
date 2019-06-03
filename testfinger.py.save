@@ -1,0 +1,53 @@
+#import serial
+#ser = serial.Serial('/dev/ttyACM0',9600)
+#while True:
+#    tacos = int(input())
+#    encode = b'%d' %tacos
+#    ser.write(encode)
+#import serial
+#ser = serial.Serial('/dev/ttyACM0',9600)
+#count = 0
+#while count < 10:
+#    if ser.in_waiting > 0:
+#        line = ser.readline()
+#        count_str = str(count)
+#        print(count_str)
+#        if line == count_str:
+#            print("Acess Granted")
+#            print("You are using value :", count)
+#            print("\n\n")
+#            count += 1
+
+
+
+
+
+
+#        print(line)
+        
+#        while count < 10:
+#            count_str = str(count)
+#            if(line == count_str):
+#                print("Access granted!!!")
+#                print("You are using value: ", count)
+#                print("\n\n")
+#            count += 1
+#        count = 0;
+
+
+
+
+import serial
+ser = serial.Serial('/dev/ttyACM0', 9600)
+count = 0
+
+while 1:
+    if(ser.in_waiting > 0):
+        line = ser.readline().decode('ascii').strip('\r\n')
+        print(line
+        if(line == "0"):
+            print("Zero")
+        elif(line == "10"):
+            print("ten")
+        else:
+            print("Invalid number")
