@@ -577,7 +577,7 @@ uint8_t getFingerprintEnroll(int id) {
       Serial.println("Communication error");
       return p;
     case FINGERPRINT_FEATUREFAIL:
-      Serial.println("Could not find fingerprint features");
+      // Serial.println("Could not find fingerprint features");
       return p;
     case FINGERPRINT_INVALIDIMAGE:
       // Serial.println("Could not find fingerprint features");
@@ -727,6 +727,7 @@ uint8_t getFingerprintEnroll(int id) {
 void Delete_database()
 {
   // Figure out how to find out how many fingerprints are in the database and print it.
+  finger.getTemplateCount();
   curr_num_fingers = finger.templateCount;
   
   // Verify there are fingerprints in the database.
@@ -828,7 +829,7 @@ uint8_t deleteFingerprint(uint8_t id) {
   uint8_t p = -1;
   
   p = finger.deleteModel(id);
-  int delete_finger_val = 0;
+  // int delete_finger_val = 0; - Used to send a negative value of ID. Do not use anymore.
 
   if (p == FINGERPRINT_OK) {
     //Serial.println("Deleted!");
@@ -863,8 +864,10 @@ uint8_t deleteFingerprint(uint8_t id) {
     digitalWrite(GREEN_LED, LOW);
     digitalWrite(RED_LED, LOW);
     // Send data to RPi to delete from its local database
-    delete_finger_val = (id * -1);
-    Serial.println(delete_finger_val);
+    
+    // Outdated. Do not send a negative value anymore
+    // delete_finger_val = (id * -1);
+    // Serial.println(delete_finger_val);
   } 
   else if (p == FINGERPRINT_PACKETRECIEVEERR) {
     Serial.println("Communication error");
@@ -889,7 +892,7 @@ uint8_t deleteFingerprint(uint8_t id) {
   }   
 
   current_finger = -1;
-  delete_finger_val = 0;
+  // delete_finger_val = 0;
 }
 
                                             /*  -----------------------------------------
