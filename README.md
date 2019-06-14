@@ -65,7 +65,7 @@
 
 ![box_2](https://user-images.githubusercontent.com/32404479/59477575-a45ebc80-8e0a-11e9-96e3-dcc84da4cc03.jpg)
 
-<p>A couple of images of our project with integration!</p>
+<p>A couple of images of our project with integration!</p><br>
 
 <h1>Thank you for viewing our CS 179J: Senior Design Project</h1>
 
