@@ -1,3 +1,6 @@
+import picamera
+#import cv2
+import numpy
 import sys
 import csv
 import time
@@ -6,9 +9,6 @@ import mysql.connector
 import RPi.GPIO as GPIO
 from hx711 import HX711
 import io
-import picamera
-import cv2
-import numpy
 
 ser = serial.Serial('/dev/ttyACM0', 9600)
 
@@ -176,7 +176,7 @@ def getUsernamefromuid(fid):
 def Login():
     #finger id
     fid = TwoFactorAuth()
-    if fid != 128:
+    if fid != "128":
         openSolenoid()
         username = getUsernamefromuid(fid)
         print(username)
