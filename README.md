@@ -1,5 +1,6 @@
 # CS179J Senior Design - Secure Fridge
 <h2>Project Description</h2>
+<h3>Link to Demonstration <a href="https://www.youtube.com/watch?v=trOnz5R9IiI&list=PLkFkNYNXeJS6DuSSENAakxo16FE3W_GLE&index=13&t=51s" target="_blank">here</a></h3>
 <p>
   Our project, Secure Fridge, will act as a secure fridge for all products that you typically have in a regular fridge. Our system will keep track of your product quantity, require a two-step authentication to access the contents, and will host a website in which it will update from a database with the new current values after every transaction. The system will have several methods of inputs. There is a specific process that the user must also go through in order to navigate their transactions successfully.
 </p>
@@ -51,11 +52,21 @@
 
 <p>The solenoid lock is going to be small relative to the box. This allows for more products to be stored without interference from the solenoid 'lock'.</p>
 
-<h2>Current Status</h2>
+<h2>Current Status - Week 8 of 10</h2>
 <p>We are currently at the point where we are finalizing code to work together in our core. After that, we will map out on the box where all of the components are to be placed.</p>
 
 ![Image of Secure Fridge](https://user-images.githubusercontent.com/32404479/58626636-1ae7b000-828a-11e9-8794-4d088f879a6d.png)
 
 <p>This representation is one example of what the final product may look like</p>
 
+<h1>Final Project - Integrated<h1>
+  
+![project2](https://user-images.githubusercontent.com/32404479/59477565-9446dd00-8e0a-11e9-8fa4-df3101984b22.jpg)
+
+![box_2](https://user-images.githubusercontent.com/32404479/59477575-a45ebc80-8e0a-11e9-96e3-dcc84da4cc03.jpg)
+
+<p>A couple of images of our project with integration!</p>
+
 <h1>Thank you for viewing our CS 179J: Senior Design Project</h1>
+
+![finalprojectgrouppic1](https://user-images.githubusercontent.com/32404479/59477581-b4769c00-8e0a-11e9-891e-dba2ee3bd7e0.png)
