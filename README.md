@@ -1,6 +1,6 @@
 # CS179J Senior Design - Secure Fridge
 <h2>Project Description</h2>
-<h3>Link to Demonstration <a href="https://www.youtube.com/watch?v=trOnz5R9IiI&list=PLkFkNYNXeJS6DuSSENAakxo16FE3W_GLE&index=13&t=51s" target="_blank">here</a></h3>
+<h3>Link to Demonstration <a href="https://youtu.be/trOnz5R9IiI" target="_blank">here</a></h3>
 <p>
   Our project, Secure Fridge, will act as a secure fridge for all products that you typically have in a regular fridge. Our system will keep track of your product quantity, require a two-step authentication to access the contents, and will host a website in which it will update from a database with the new current values after every transaction. The system will have several methods of inputs. There is a specific process that the user must also go through in order to navigate their transactions successfully.
 </p>
