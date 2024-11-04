@@ -1,3 +1,8 @@
+<h1 align="center">
+  Archived
+</h1>
+
+
 # CS179J Senior Design - Secure Fridge
 <h2>Project Description</h2>
 <h3>Link to Demonstration <a href="https://youtu.be/trOnz5R9IiI" target="_blank">here</a></h3>
